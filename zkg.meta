@@ -1,0 +1,18 @@
+[package]
+script_dir = scripts
+build_command = ./configure && cmake --build build
+test_command = cd testing && btest -c btest.cfg
+summary = TODO: A summary of PerfSupport in one line
+description = TODO: A more detailed description of PerfSupport.
+	It can span multiple lines, with this indentation.
+
+[template]
+source = https://github.com/zeek/package-template
+version = v3.1.0
+zkg_version = 2.14.0
+features = plugin
+
+[template_vars]
+name = PerfSupport
+namespace = Zeek
+
