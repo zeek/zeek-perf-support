@@ -13,3 +13,5 @@ or
     ZEEKPERFSUPPORT=1 perf record -g zeek -r ./trace.pcap PerfSupport::enable=T
 
 To prefix the functions in the map file "ZEEK:", can redef `PerfSupport::prefix="ZEEK:"`.
+
+![Flamegraph](./example/flame.svg)
