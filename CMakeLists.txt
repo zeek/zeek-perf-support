@@ -29,7 +29,7 @@ set_property(SOURCE src/Trampoline.S PROPERTY LANGUAGE C)
 # Need this, otherwise the stack is borked.
 target_compile_options(Zeek_PerfSupport PRIVATE "-fno-omit-frame-pointer")
 
-zeek_plugin_dist_files(README CHANGES COPYING VERSION)
+zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
 zeek_plugin_end()
 
 if ("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
