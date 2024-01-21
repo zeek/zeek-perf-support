@@ -43,19 +43,14 @@ zeek::Val* _Zeek_PerfSupport_stmt_exec(zeek::detail::Stmt* stmt, zeek::detail::F
     return stmt->Exec(frame, *flow).release();
 }
 
-zeek::Val* _Zeek_my_trampoline(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame, zeek::detail::StmtFlowType* flow,
-                               exec_stmt_func_t callback) {
-    return callback(stmt, frame, flow);
-}
-
-// These are define in Trampoline.S and a copy is created for each body.
+// These are defined in Trampoline.S and a copy is created for each ScriptFunc body.
 extern zeek::Val* _Zeek_trampoline_func_start(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame,
                                               zeek::detail::StmtFlowType* flow, exec_stmt_func_t callback);
 extern void _Zeek_trampoline_func_end();
 }
 
 /**
- * Traverse the AST and collect all Zeek functions.
+ * Traverse the AST and collect all Zeek script functions.
  */
 class FuncCollector : public zeek::detail::TraversalCallback {
 public:
@@ -70,32 +65,65 @@ public:
     std::set<const zeek::Func*> funcs;
 };
 
+/**
+ * Stmt subclass that diverts execution through the given trampoline function.
+ */
 class TrampolineStmt : public zeek::detail::Stmt {
 public:
-    TrampolineStmt(zeek::detail::StmtPtr orig_stmt, trampoline_func_t trampoline, exec_stmt_func_t callback)
-        : Stmt(zeek::detail::STMT_ANY), orig_stmt(orig_stmt), trampoline(trampoline), callback(callback){};
+    TrampolineStmt(zeek::detail::StmtPtr orig_stmt, trampoline_func_t trampoline)
+        : Stmt(zeek::detail::STMT_ANY), orig_stmt(orig_stmt), trampoline(trampoline) {}
 
     zeek::ValPtr Exec(zeek::detail::Frame* frame, zeek::detail::StmtFlowType& flow) override {
         // debug("Trampoline start orig_stmt=%p frame=%p flow=%p trampoline=%p callback=%p", orig_stmt.get(), frame,
         // &flow,
         //      trampoline, callback);
-        return zeek::IntrusivePtr{zeek::AdoptRef{}, trampoline(orig_stmt.get(), frame, &flow, callback)};
+        return zeek::IntrusivePtr{zeek::AdoptRef{},
+                                  trampoline(orig_stmt.get(), frame, &flow, _Zeek_PerfSupport_stmt_exec)};
     }
 
     zeek::detail::TraversalCode Traverse(zeek::detail::TraversalCallback* cb) const override {
         return orig_stmt->Traverse(cb);
     }
 
-    // This is something ZAM related and probably borked.
+    // This is something ZAM related and probably borked this way.
     zeek::detail::StmtPtr Duplicate() override { return orig_stmt->Duplicate(); }
-
 
 private:
     const zeek::detail::StmtPtr orig_stmt;
     trampoline_func_t trampoline;
-    exec_stmt_func_t callback;
 };
 
+// Allocate executable memory for the trampolines.
+std::pair<void*, size_t> mmap_trampoline_memory(size_t nbodies, size_t trampoline_alloc_sz) {
+    int page_sz = sysconf(_SC_PAGE_SIZE);
+    size_t mmap_sz = ((nbodies * trampoline_alloc_sz) / page_sz + 1) * page_sz;
+
+    void* addr = mmap(NULL, mmap_sz, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    return {addr, mmap_sz};
+}
+
+// Open a /tmp/perf-%d.map.
+//
+// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/tools/perf/Documentation/jit-interface.txt
+FILE* open_map_file() {
+    std::string fn = zeek::util::fmt("/tmp/perf-%d.map", getpid());
+    FILE* f = fopen(fn.c_str(), "w");
+    if ( ! f ) {
+        return nullptr;
+    }
+    return f;
+}
+
+// Format the name for a function and top-level Stmt.
+//
+// <prefix><function_name>:<filename>:<first_line>
+std::string format_map_entry(const std::string& prefix, const zeek::Func* f, const zeek::detail::StmtPtr& stmt) {
+    const auto* loc = stmt->GetLocationInfo();
+    auto fn = zeek::util::detail::without_zeekpath_component(loc->filename);
+    std::string loc_str = zeek::util::fmt("%s:%d", fn.c_str(), loc->first_line);
+    return zeek::util::fmt("%s%s:%s\n", prefix.c_str(), f->Name(), loc_str.c_str());
+}
 
 } // namespace
 
@@ -124,29 +152,6 @@ void Plugin::Done() {
         trampoline_space = MAP_FAILED;
     }
 }
-
-namespace {
-
-std::pair<void*, size_t> mmap_trampoline_memory(size_t nbodies, size_t trampoline_alloc_sz) {
-    int page_sz = sysconf(_SC_PAGE_SIZE);
-    size_t mmap_sz = ((nbodies * trampoline_alloc_sz) / page_sz + 1) * page_sz;
-
-    void* addr = mmap(NULL, mmap_sz, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    return {addr, mmap_sz};
-}
-
-// https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/tools/perf/Documentation/jit-interface.txt
-FILE* open_map_file() {
-    std::string fn = zeek::util::fmt("/tmp/perf-%d.map", getpid());
-    FILE* f = fopen(fn.c_str(), "w");
-    if ( ! f ) {
-        return nullptr;
-    }
-    return f;
-}
-
-} // namespace
 
 void Plugin::InstallTrampolines() {
     FuncCollector func_collector;
@@ -184,30 +189,24 @@ void Plugin::InstallTrampolines() {
     void* trampoline_offset = trampoline_space;
 
     for ( const auto* f : func_collector.funcs ) {
-        auto* csf = static_cast<const zeek::detail::ScriptFunc*>(f);
+        const auto* csf = static_cast<const zeek::detail::ScriptFunc*>(f);
+
+        // Calling ReplaceBody() requires non-const version.
         auto* sf = const_cast<zeek::detail::ScriptFunc*>(csf);
 
-        const auto& bodies = f->GetBodies();
-
-        for ( const auto& b : bodies ) {
+        for ( const auto& b : f->GetBodies() ) {
             memcpy(trampoline_offset, reinterpret_cast<void*>(_Zeek_trampoline_func_start), trampoline_sz);
 
-            auto* body_trampoline_func = reinterpret_cast<trampoline_func_t>(trampoline_offset);
+            auto entry = format_map_entry(prefix, f, b.stmts);
+            std::string map_entry = zeek::util::fmt("%p %zx %s\n", trampoline_offset, trampoline_sz, entry.c_str());
 
-            // Format JIT entry and write to file.
-            const auto* loc = b.stmts->GetLocationInfo();
-            std::string loc_str =
-                zeek::util::fmt("%s:%d", zeek::util::detail::without_zeekpath_component(loc->filename).c_str(),
-                                loc->first_line);
-            std::string map_entry = zeek::util::fmt("%p %zx %s%s:%s\n", trampoline_offset, trampoline_sz,
-                                                    prefix.c_str(), f->Name(), loc_str.c_str());
             size_t n = fwrite(map_entry.c_str(), 1, map_entry.size(), mapf.get());
             if ( n != map_entry.size() )
                 zeek::reporter->Warning("failed to write map entry %zu vs %zu", n, map_entry.size());
 
             // Now replace the statement!
-            auto trampoline_stmt =
-                zeek::make_intrusive<TrampolineStmt>(b.stmts, body_trampoline_func, _Zeek_PerfSupport_stmt_exec);
+            auto* body_trampoline_func = reinterpret_cast<trampoline_func_t>(trampoline_offset);
+            auto trampoline_stmt = zeek::make_intrusive<TrampolineStmt>(b.stmts, body_trampoline_func);
             sf->ReplaceBody(b.stmts, trampoline_stmt);
 
             trampoline_offset = static_cast<char*>(trampoline_offset) + trampoline_alloc_sz;
