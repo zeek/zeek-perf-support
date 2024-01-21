@@ -103,7 +103,7 @@ std::pair<void*, size_t> mmap_trampoline_memory(size_t nbodies, size_t trampolin
     return {addr, mmap_sz};
 }
 
-// Open a /tmp/perf-%d.map.
+// Open a file named /tmp/perf-<pid>.map.
 //
 // https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/tools/perf/Documentation/jit-interface.txt
 FILE* open_map_file() {
@@ -185,7 +185,6 @@ void Plugin::InstallTrampolines() {
 
     debug("Allocated %zu bytes of executable trampoline memory at %p", trampoline_space_sz, trampoline_space);
 
-    static_assert(sizeof(uint64_t) == sizeof(void*));
     void* trampoline_offset = trampoline_space;
 
     for ( const auto* f : func_collector.funcs ) {
@@ -195,11 +194,11 @@ void Plugin::InstallTrampolines() {
         auto* sf = const_cast<zeek::detail::ScriptFunc*>(csf);
 
         for ( const auto& b : f->GetBodies() ) {
+            // Copy this statement's own trampoline function in place.
             memcpy(trampoline_offset, reinterpret_cast<void*>(_Zeek_trampoline_func_start), trampoline_sz);
 
             auto entry = format_map_entry(prefix, f, b.stmts);
             std::string map_entry = zeek::util::fmt("%p %zx %s\n", trampoline_offset, trampoline_sz, entry.c_str());
-
             size_t n = fwrite(map_entry.c_str(), 1, map_entry.size(), mapf.get());
             if ( n != map_entry.size() )
                 zeek::reporter->Warning("failed to write map entry %zu vs %zu", n, map_entry.size());
