@@ -132,7 +132,14 @@ std::string format_map_entry(const std::string& prefix, const zeek::Func* f, con
     const auto* loc = stmt->GetLocationInfo();
     auto fn = zeek::util::detail::without_zeekpath_component(loc->filename);
     std::string loc_str = zeek::util::fmt("%s:%d", fn.c_str(), loc->first_line);
-    return zeek::util::fmt("%s%s:%s", prefix.c_str(), f->Name(), loc_str.c_str());
+
+#if ZEEK_VERSION_NUMBER < 70100
+    const char* name = f->Name();
+#else
+    const char* name = f->GetName().c_str();
+#endif
+
+    return zeek::util::fmt("%s%s:%s", prefix.c_str(), name, loc_str.c_str());
 }
 
 } // namespace
