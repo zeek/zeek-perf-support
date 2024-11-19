@@ -27,7 +27,7 @@ zeek_plugin_cc(src/Trampoline.S)
 set_property(SOURCE src/Trampoline.S PROPERTY LANGUAGE C)
 
 # Need this, otherwise the stack is borked.
-target_compile_options(Zeek_PerfSupport PRIVATE "-fno-omit-frame-pointer")
+target_compile_options(Zeek_PerfSupport PRIVATE "-fno-omit-frame-pointer -gdwarf")
 
 zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
 zeek_plugin_end()

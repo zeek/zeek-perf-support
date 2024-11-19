@@ -9,6 +9,7 @@
 #include <zeek/Func.h>
 #include <zeek/ID.h>
 #include <zeek/Stmt.h>
+#include <zeek/StmtEnums.h>
 #include <zeek/Traverse.h>
 #include <zeek/util.h>
 #include <cstdlib>
@@ -65,13 +66,22 @@ public:
     std::set<const zeek::Func*> funcs;
 };
 
+namespace {
+
+#if ZEEK_VERSION_NUMBER < 70000
+zeek::detail::StmtTag stmt_tag = zeek::detail::STMT_ANY;
+#else
+zeek::detail::StmtTag stmt_tag = zeek::detail::STMT_EXTERN;
+#endif
+} // namespace
+
 /**
  * Stmt subclass that diverts execution through the given trampoline function.
  */
 class TrampolineStmt : public zeek::detail::Stmt {
 public:
     TrampolineStmt(zeek::detail::StmtPtr orig_stmt, trampoline_func_t trampoline)
-        : Stmt(zeek::detail::STMT_ANY), orig_stmt(orig_stmt), trampoline(trampoline) {}
+        : Stmt(stmt_tag), orig_stmt(orig_stmt), trampoline(trampoline) {}
 
     zeek::ValPtr Exec(zeek::detail::Frame* frame, zeek::detail::StmtFlowType& flow) override {
         // debug("Trampoline start orig_stmt=%p frame=%p flow=%p trampoline=%p callback=%p", orig_stmt.get(), frame,
