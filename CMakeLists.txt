@@ -21,16 +21,24 @@ include(plugin.cmake OPTIONAL)
 
 include(ZeekPlugin)
 
-zeek_plugin_begin(Zeek PerfSupport)
-zeek_plugin_cc(src/Plugin.cc)
-zeek_plugin_cc(src/Trampoline.S)
+zeek_add_plugin(
+    Zeek
+    PerfSupport
+    SOURCES
+    src/Plugin.cc
+    src/Trampoline.S
+    DIST_FILES
+    README.md
+    CHANGES
+    COPYING
+    VERSION
+)
+
 set_property(SOURCE src/Trampoline.S PROPERTY LANGUAGE C)
 
-# Need this, otherwise the stack is borked.
-target_compile_options(Zeek_PerfSupport PRIVATE "-fno-omit-frame-pointer -gdwarf")
-
-zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
-zeek_plugin_end()
+# Need -fno-omit-frame-pointer, otherwise the stack is borked.
+# Zeek also needs to be compiled that way.
+target_compile_options(Zeek_PerfSupport PRIVATE -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer)
 
 if ("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
     # Allows building rpm/deb packages via "make package" in build dir.
