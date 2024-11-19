@@ -3,3 +3,4 @@ build
 *.swp
 *.log
 perf.data*
+.cache
