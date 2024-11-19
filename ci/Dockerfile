@@ -1,4 +1,4 @@
-FROM zeek/zeek:6.0
+FROM zeek/zeek:7.0
 
 RUN apt-get update && apt-get install --no-install-recommends -y \
 	build-essential \
