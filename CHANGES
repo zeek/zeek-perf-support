@@ -1,3 +1,17 @@
+0.3.0 | 2024-11-19 10:45:19 +0100
+
+  * Bump version to 0.3.0 (Arne Welzel, Corelight)
+
+  * git: Ignore clangd .cache dir (Arne Welzel, Corelight)
+
+  * ci: Bump to Zeek 7.0 (Arne Welzel, Corelight)
+
+  * cmake: Use new zeek_add_plugin() (Arne Welzel, Corelight)
+
+  * Use Func::GetName() when available (Arne Welzel, Corelight)
+
+  * Use STMT_EXTERN when available (Arne Welzel, Corelight)
+
 0.2.0 | 2024-02-07 11:41:46 +0100
 
   * Starting CHANGES. (Arne Welzel, Corelight)
