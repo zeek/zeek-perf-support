@@ -1,3 +1,19 @@
+0.4.0 | 2024-11-21 14:50:21 +0100
+
+  * tests: Add ZAM smoke test (Arne Welzel, Corelight)
+
+    Ensure it is not obviously crashing.
+
+  * Avoid endless type recursion (Arne Welzel, Corelight)
+
+    The ZBody statement's Traverse method ends up traversing types, so we
+    need to protect from endless recursion.
+
+  * Use InitPreExecution() when on Zeek 7.1 or later (Arne Welzel, Corelight)
+
+    This allows profiling also when running with ZAM enabled, but only
+    with Zeek 7.1 or later.
+
 0.3.0 | 2024-11-19 10:45:19 +0100
 
   * Bump version to 0.3.0 (Arne Welzel, Corelight)
