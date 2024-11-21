@@ -154,7 +154,7 @@ zeek::plugin::Configuration Plugin::Configure() {
     return config;
 }
 
-void Plugin::InitPostScript() {
+void Plugin::InstallTrampolinesIfEnabled() {
     const auto& enable = zeek::id::find_val<zeek::BoolVal>("PerfSupport::enable");
     const auto* env = std::getenv("ZEEKPERFSUPPORT");
 
