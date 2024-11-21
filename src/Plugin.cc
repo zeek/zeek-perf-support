@@ -11,6 +11,7 @@
 #include <zeek/Stmt.h>
 #include <zeek/StmtEnums.h>
 #include <zeek/Traverse.h>
+#include <zeek/TraverseTypes.h>
 #include <zeek/util.h>
 #include <cstdlib>
 #include <memory>
@@ -63,6 +64,16 @@ public:
         return zeek::detail::TC_CONTINUE;
     }
 
+    // Avoid endless type recursion!
+    virtual zeek::detail::TraversalCode PreType(const zeek::Type* t) {
+        if ( types.count(t) > 0 )
+            return zeek::detail::TC_ABORTSTMT;
+
+        types.insert(t);
+        return zeek::detail::TC_CONTINUE;
+    }
+
+    std::set<const zeek::Type*> types;
     std::set<const zeek::Func*> funcs;
 };
 
