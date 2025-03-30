@@ -21,18 +21,28 @@ include(plugin.cmake OPTIONAL)
 
 include(ZeekPlugin)
 
-zeek_add_plugin(
-    Zeek
-    PerfSupport
-    SOURCES
-    src/Plugin.cc
-    src/Trampoline.S
-    DIST_FILES
-    README.md
-    CHANGES
-    COPYING
-    VERSION
-)
+# Zeek 7.0 7.1 are buggy when using zeek_add_plugin() and builtin plugins,
+# keep using the old-style zeek_plugin_begin() approach. Switch this to
+# zeek_add_plugin() below once 8.0 has been released.
+#
+# See https://github.com/zeek/cmake/pull/125
+zeek_plugin_begin(Zeek PerfSupport)
+zeek_plugin_cc(src/Plugin.cc src/Trampoline.S)
+zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
+zeek_plugin_end()
+
+# zeek_add_plugin(
+#    Zeek
+#    PerfSupport
+#    SOURCES
+#    src/Plugin.cc
+#    src/Trampoline.S
+#    DIST_FILES
+#    README.md
+#    CHANGES
+#    COPYING
+#    VERSION
+# )
 
 set_source_files_properties(src/Trampoline.S PROPERTIES LANGUAGE C)
 
