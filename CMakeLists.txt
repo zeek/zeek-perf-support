@@ -21,24 +21,37 @@ include(plugin.cmake OPTIONAL)
 
 include(ZeekPlugin)
 
-zeek_add_plugin(
-    Zeek
-    PerfSupport
-    SOURCES
-    src/Plugin.cc
-    src/Trampoline.S
-    DIST_FILES
-    README.md
-    CHANGES
-    COPYING
-    VERSION
-)
+# Zeek 7.0 7.1 are buggy when using zeek_add_plugin() and builtin plugins,
+# keep using the old-style zeek_plugin_begin() approach. Switch this to
+# zeek_add_plugin() below once 8.0 has been released.
+#
+# See https://github.com/zeek/cmake/pull/125
+zeek_plugin_begin(Zeek PerfSupport)
+zeek_plugin_cc(src/Plugin.cc src/Trampoline.S)
+zeek_plugin_dist_files(README.md CHANGES COPYING VERSION)
+zeek_plugin_end()
 
-set_property(SOURCE src/Trampoline.S PROPERTY LANGUAGE C)
+# zeek_add_plugin(
+#    Zeek
+#    PerfSupport
+#    SOURCES
+#    src/Plugin.cc
+#    src/Trampoline.S
+#    DIST_FILES
+#    README.md
+#    CHANGES
+#    COPYING
+#    VERSION
+# )
 
-# Need -fno-omit-frame-pointer, otherwise the stack is borked.
-# Zeek also needs to be compiled that way.
-target_compile_options(Zeek_PerfSupport PRIVATE -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer)
+set_source_files_properties(src/Trampoline.S PROPERTIES LANGUAGE C)
+
+# Set -fno-omit-frame-pointer on the target for this plugin, or the stack is
+# borked. Zeek also needs to be compiled that way. We set this as a file instead
+# of a target property so it works regardless of whether the plugin is built
+# standalone, or as a Zeek builtin plugin.
+set_source_files_properties(src/Trampoline.S src/Plugin.cc PROPERTIES
+    COMPILE_OPTIONS "-fno-omit-frame-pointer;-mno-omit-leaf-frame-pointer")
 
 if ("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
     # Allows building rpm/deb packages via "make package" in build dir.

@@ -1,3 +1,11 @@
+0.5.0 | 2025-03-31 12:52:42 +0200
+
+  * Use custom type as fclose replacement (Arne Welzel, Corelight)
+
+  * CMakeLists: Switch to zeek_plugin_begin() (Arne Welzel, Corelight)
+
+  * CMakeLists: Use source file properties rather than target properties (Arne Welzel, Corelight)
+
 0.4.0 | 2024-11-21 14:50:21 +0100
 
   * tests: Add ZAM smoke test (Arne Welzel, Corelight)
