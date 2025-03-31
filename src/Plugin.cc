@@ -188,7 +188,11 @@ void Plugin::InstallTrampolines() {
     const auto& prefix_val = zeek::id::find_val<zeek::StringVal>("PerfSupport::prefix");
     const auto prefix = prefix_val->ToStdString();
 
-    std::unique_ptr<FILE, decltype(&fclose)> mapf{open_map_file(), fclose};
+    struct FileCloser {
+        void operator()(FILE* f) noexcept { fclose(f); };
+    };
+
+    std::unique_ptr<FILE, FileCloser> mapf{open_map_file()};
     if ( ! mapf ) {
         zeek::reporter->Warning("Failed to open perf map file");
         return;
