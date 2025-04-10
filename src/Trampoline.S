@@ -19,7 +19,6 @@ _Zeek_trampoline_func_start:
     ret
 #endif
 #if defined(__aarch64__) && defined(__AARCH64EL__) && !defined(__ILP32__)
-#error "Unsupported, but this this should work just work, like for Python"
     // ARM64 little endian, 64bit ABI
     // generate with aarch64-linux-gnu-gcc 12.1
     stp     x29, x30, [sp, -16]!
