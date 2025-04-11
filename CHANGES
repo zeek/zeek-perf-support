@@ -1,3 +1,9 @@
+0.6.0 | 2025-04-11 09:09:21 +0200
+
+  * ARM support: Remove error pragma from trampoline code (Jeff Lucovsky)
+
+    Proper ARM operation validated on recent pi system.
+
 0.5.0 | 2025-03-31 12:52:42 +0200
 
   * Use custom type as fclose replacement (Arne Welzel, Corelight)
