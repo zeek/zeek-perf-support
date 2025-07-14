@@ -1,3 +1,5 @@
+0.8.0 | 2025-07-14 09:39:14 +0200
+
 0.7.0 | 2025-07-14 09:38:53 +0200
 
   * Fix usage of Location class after recent upstream changes (Tim Wojtulewicz, Corelight)
