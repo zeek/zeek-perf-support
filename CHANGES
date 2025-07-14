@@ -1,3 +1,7 @@
+0.7.0 | 2025-07-14 09:38:53 +0200
+
+  * Fix usage of Location class after recent upstream changes (Tim Wojtulewicz, Corelight)
+
 0.6.0 | 2025-04-11 09:09:21 +0200
 
   * ARM support: Remove error pragma from trampoline code (Jeff Lucovsky)

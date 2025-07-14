@@ -141,8 +141,13 @@ FILE* open_map_file() {
 // <prefix><function_name>:<filename>:<first_line>
 std::string format_map_entry(const std::string& prefix, const zeek::Func* f, const zeek::detail::StmtPtr& stmt) {
     const auto* loc = stmt->GetLocationInfo();
+#if ZEEK_VERSION < 80000
     auto fn = zeek::util::detail::without_zeekpath_component(loc->filename);
     std::string loc_str = zeek::util::fmt("%s:%d", fn.c_str(), loc->first_line);
+#else
+    auto fn = zeek::util::detail::without_zeekpath_component(loc->FileName());
+    std::string loc_str = zeek::util::fmt("%s:%d", fn.c_str(), loc->FirstLine());
+#endif
 
 #if ZEEK_VERSION_NUMBER < 70100
     const char* name = f->Name();
