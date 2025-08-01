@@ -13,19 +13,21 @@
 //
 _Zeek_trampoline_func_start:
 #ifdef __x86_64__
-    sub    $8, %rsp
+    pushq   %rbp
+    movq    %rsp, %rbp
     call    *%rcx
-    add    $8, %rsp
+    popq    %rbp
     ret
 #endif
 #if defined(__aarch64__) && defined(__AARCH64EL__) && !defined(__ILP32__)
     // ARM64 little endian, 64bit ABI
-    // generate with aarch64-linux-gnu-gcc 12.1
+    // generated with aarch64-linux-gnu-gcc 12.3
     stp     x29, x30, [sp, -16]!
     mov     x29, sp
-    blr     x3
     ldp     x29, x30, [sp], 16
-    ret
+    ldr     x3, [x3]
+    mov     x16, x3
+    br      x16
 #endif
 
 .globl  _Zeek_trampoline_func_end
