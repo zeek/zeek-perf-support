@@ -13,6 +13,7 @@
 //
 _Zeek_trampoline_func_start:
 #ifdef __x86_64__
+    endbr64
     pushq   %rbp
     movq    %rsp, %rbp
     call    *%rcx
