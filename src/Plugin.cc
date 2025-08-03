@@ -119,9 +119,14 @@ std::pair<void*, size_t> mmap_trampoline_memory(size_t nbodies, size_t trampolin
     int page_sz = sysconf(_SC_PAGE_SIZE);
     size_t mmap_sz = ((nbodies * trampoline_alloc_sz) / page_sz + 1) * page_sz;
 
-    void* addr = mmap(NULL, mmap_sz, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void* addr = mmap(NULL, mmap_sz, PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     return {addr, mmap_sz};
+}
+
+// Make trampoline memory executable.
+bool mmap_protect_trampoline_memory(void *addr, size_t sz) {
+    return mprotect(addr, sz, PROT_EXEC | PROT_READ ) == 0;
 }
 
 // Open a file named /tmp/perf-<pid>.map.
@@ -247,5 +252,10 @@ void Plugin::InstallTrampolines() {
 
             trampoline_offset = static_cast<char*>(trampoline_offset) + trampoline_alloc_sz;
         }
+    }
+    if ( ! mmap_protect_trampoline_memory(trampoline_space, trampoline_space_sz) ) {
+        zeek::reporter->Warning("Trampolines cannot be made executable %s", strerror(errno));
+        munmap(trampoline_space, trampoline_space_sz);
+        trampoline_space = MAP_FAILED;
     }
 }
