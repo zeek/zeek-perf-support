@@ -2,21 +2,22 @@
 .globl  _Zeek_trampoline_func_start
 
 // Val*
-// _Zeek_trampoline(Stmt* stmt, Frame *frame, StmtFlowType *flow, exec_stmt_func_t* esf) {
-//     return esf(stmt, frame, ft);
+// _Zeek_trampoline(Stmt* stmt, Frame *frame, StmtFlowType *flow, SuspendedException *exc, exec_stmt_func_t* esf) {
+//     return esf(stmt, frame, ft, exc);
 // }
 //
 // RDI: stmt
 // RSI: frame
 // RDX: flow
-// RCX: esf
+// RCX: exc
+// R8 : esf
 //
 _Zeek_trampoline_func_start:
 #ifdef __x86_64__
     endbr64
     pushq   %rbp
     movq    %rsp, %rbp
-    call    *%rcx
+    call    *%r8
     popq    %rbp
     ret
 #endif
@@ -26,8 +27,8 @@ _Zeek_trampoline_func_start:
     stp     x29, x30, [sp, -16]!
     mov     x29, sp
     ldp     x29, x30, [sp], 16
-    ldr     x3, [x3]
-    mov     x16, x3
+    ldr     x4, [x4]
+    mov     x16, x4
     br      x16
 #endif
 

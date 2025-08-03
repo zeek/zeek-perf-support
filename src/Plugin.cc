@@ -27,6 +27,22 @@ using namespace zeek::plugin::Zeek_PerfSupport;
 
 #define debug(...) PLUGIN_DBG_LOG(plugin, __VA_ARGS__)
 
+namespace zeek {
+    class SuspendedException {
+    public:
+        SuspendedException() = default;
+        void Store(const zeek::InterpreterException& e) {
+            has_exception = true;
+        }
+        void Throw() const {
+            if ( has_exception )
+                throw zeek::InterpreterException();
+        }
+
+    private:
+        bool has_exception = false;
+    };
+}
 
 namespace {
 
@@ -34,15 +50,21 @@ extern "C" {
 
 // Use raw pointers so that the x86-64 calling convention is simple.
 typedef zeek::Val* (*exec_stmt_func_t)(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame,
-                                       zeek::detail::StmtFlowType* flow);
+                                       zeek::detail::StmtFlowType* flow, zeek::SuspendedException *exc);
 typedef zeek::Val* (*trampoline_func_t)(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame,
-                                        zeek::detail::StmtFlowType* flow, exec_stmt_func_t callback);
+                                        zeek::detail::StmtFlowType* flow, zeek::SuspendedException *exc,
+                                        exec_stmt_func_t callback);
 
 // This is the callback invoked by the trampoline. It'll show up in the callstack, but should be easy
 // enough to filter out. Invoking the Exec() member function via assembly looks like insanity.
 zeek::Val* _Zeek_PerfSupport_stmt_exec(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame,
-                                       zeek::detail::StmtFlowType* flow) {
-    return stmt->Exec(frame, *flow).release();
+                                       zeek::detail::StmtFlowType* flow, zeek::SuspendedException* exc) {
+    try {
+        return stmt->Exec(frame, *flow).release();
+    } catch (const zeek::InterpreterException& e) {
+        exc->Store(e);
+        return nullptr;
+    }
 }
 
 // These are defined in Trampoline.S and a copy is created for each ScriptFunc body.
@@ -98,8 +120,12 @@ public:
         // debug("Trampoline start orig_stmt=%p frame=%p flow=%p trampoline=%p callback=%p", orig_stmt.get(), frame,
         // &flow,
         //      trampoline, callback);
-        return zeek::IntrusivePtr{zeek::AdoptRef{},
-                                  trampoline(orig_stmt.get(), frame, &flow, _Zeek_PerfSupport_stmt_exec)};
+        zeek::SuspendedException exc;
+        zeek::IntrusivePtr ptr = {zeek::AdoptRef{},
+                                  trampoline(orig_stmt.get(), frame, &flow, &exc, _Zeek_PerfSupport_stmt_exec)};
+        if ( ! ptr )
+            exc.Throw();
+        return ptr;
     }
 
     zeek::detail::TraversalCode Traverse(zeek::detail::TraversalCallback* cb) const override {
