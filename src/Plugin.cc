@@ -28,15 +28,20 @@ using namespace zeek::plugin::Zeek_PerfSupport;
 #define debug(...) PLUGIN_DBG_LOG(plugin, __VA_ARGS__)
 
 namespace zeek {
+    class RethrownInterpreterException : public InterpreterException {
+    public:
+        RethrownInterpreterException() = default;
+    };
+
     class SuspendedException {
     public:
         SuspendedException() = default;
-        void Store(const zeek::InterpreterException& e) {
+        void Store(const InterpreterException& e) {
             has_exception = true;
         }
         void Throw() const {
             if ( has_exception )
-                throw zeek::InterpreterException();
+                throw RethrownInterpreterException();
         }
 
     private:
