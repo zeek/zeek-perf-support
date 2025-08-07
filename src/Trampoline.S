@@ -1,7 +1,15 @@
 // See src/Trampoline.cc and the print-trampoline top-level Makefile target
 // for where this assembly code is coming from.
+
+// Add an extra underscore to the symbol name on OSX for Mach-O conventions.
+#ifdef __APPLE__
+#define SYMBOL(name) _##name
+#else
+#define SYMBOL(name) name
+#endif
+
 .text
-.globl  _Zeek_trampoline_func_start
+.globl  SYMBOL(_Zeek_trampoline_func_start)
 
 // zeek::Val* _Zeek_trampoline(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame, zeek::detail::StmtFlowType* flow,
 //                             zeek::SuspendedException* exc, exec_stmt_func_t esf) {
@@ -14,7 +22,7 @@
 // RCX: exc
 // R8 : esf
 //
-_Zeek_trampoline_func_start:
+SYMBOL(_Zeek_trampoline_func_start):
 #ifdef __x86_64__
     endbr64
     pushq   %rbp
@@ -31,6 +39,6 @@ _Zeek_trampoline_func_start:
     ret
 #endif
 
-.globl  _Zeek_trampoline_func_end
-_Zeek_trampoline_func_end:
+.globl  SYMBOL(_Zeek_trampoline_func_end)
+SYMBOL(_Zeek_trampoline_func_end):
     nop
