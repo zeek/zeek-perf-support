@@ -21,3 +21,11 @@ out with `grep` ;-)
 
 
 ![Flamegraph](./example/flame.svg)
+
+
+Trampoline Code
+---------------
+
+The assembly code used in src/Trampoline.s can be determined by:
+
+    make print-trampoline

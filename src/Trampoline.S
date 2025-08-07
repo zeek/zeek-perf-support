@@ -1,9 +1,11 @@
+// See src/Trampoline.cc and the print-trampoline top-level Makefile target
+// for where this assembly code is coming from.
 .text
 .globl  _Zeek_trampoline_func_start
 
-// Val*
-// _Zeek_trampoline(Stmt* stmt, Frame *frame, StmtFlowType *flow, SuspendedException *exc, exec_stmt_func_t* esf) {
-//     return esf(stmt, frame, ft, exc);
+// zeek::Val* _Zeek_trampoline(zeek::detail::Stmt* stmt, zeek::detail::Frame* frame, zeek::detail::StmtFlowType* flow,
+//                             zeek::SuspendedException* exc, exec_stmt_func_t esf) {
+//     return esf(stmt, frame, flow, exc);
 // }
 //
 // RDI: stmt
@@ -22,14 +24,11 @@ _Zeek_trampoline_func_start:
     ret
 #endif
 #if defined(__aarch64__) && defined(__AARCH64EL__) && !defined(__ILP32__)
-    // ARM64 little endian, 64bit ABI
-    // generated with aarch64-linux-gnu-gcc 12.3
     stp     x29, x30, [sp, -16]!
     mov     x29, sp
+    blr     x4
     ldp     x29, x30, [sp], 16
-    ldr     x4, [x4]
-    mov     x16, x4
-    br      x16
+    ret
 #endif
 
 .globl  _Zeek_trampoline_func_end

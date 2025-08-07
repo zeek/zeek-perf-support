@@ -1,3 +1,67 @@
+0.9.0 | 2025-08-07 17:06:32 +0200
+
+  * print-trampoline: Add -fno-optimize-sibling-calls, too (Arne Welzel, Corelight)
+
+  * Trampoline: Fix aarch64 (Arne Welzel, Corelight)
+
+    This is just using the assembly code produced via `print make-trampoline`
+    without quite understanding how aarch64 works.
+
+  * Add instructions for producing the trampoline assembly code (Arne Welzel, Corelight)
+
+  * Add Github CI workflow for PRs using Docker on x86 and arm runners (Arne Welzel, Corelight)
+
+  * Using a derivation to no longer require a change to Zeek. (cccs-jsjm)
+
+    Indeed, InterpreterException's constructor is protected, so we may
+    create a new instance if we introduce a new derived class. All catch
+    statements in Zeek appear to catch by reference, so there should be no
+    issue if a RethrownInterpreterException is caught as an
+    InterpreterException.
+
+  * Fixing failure to propagate exceptions across the trampoline. (cccs-jsjm)
+
+    The issue observed is that the program aborts because the C++ runtime
+    function __cxa_throw cannot find an exception handler. Runtime errors
+    in the Zeek scripting language are propagated by exceptions, notably
+    zeek::InterpreterException. When compiling with exception support, a C++
+    compiler also generates the contents for the .eh_frame section. This
+    section supports the exception mechanism by permitting the discovery
+    of the appropriate catch statement, among other things.
+
+    In theory, it should be possible to dynamically register the data necessary
+    to unwind the stack over the trampoline, but doing so in a robust and portable
+    manner is not trivial. I believe this would require calling functions
+    from the C++ runtime library. Furthermore, the data that would need to be
+    registered would depend on the processor architecture. Using a library that
+    provides support for JIT compilation and loading might help solve this problem
+    for the general case, but it doesn't seem to be worth using a library for the
+    particular case here.
+
+    The approach adopted by this commit is that InterpreterException is
+    caught and the rethrown to avoid unwinding across the trampoline.
+    This is not an universal solution in the sense that only known exception
+    classes are handled correctly. Here, only InterpeterException is handled.
+
+    The changes in this commit requires that zeek::SuspededException is a
+    friend class to zeek::InterpreterException, which is a small change in
+    upstream Zeek. In addition the SuspededException class could be moved to
+    Zeek, because declaring a friend that is never defined is weird.
+
+    I tested this with gcc_15.0.50.20240403-git and Zeek somewhere near version 7.2.2.
+    I don't have any way of testing the AARCH version.
+
+  * Adding unit test that does not pass (yet). (cccs-jsjm)
+
+  * Avoing memory pages that are simultaneously writable and executable. (cccs-jsjm)
+
+  * Adding an endbr64 to make it work with Intel CET. (cccs-jsjm)
+
+  * The trampoline no longer omits the frame pointer. (cccs-jsjm)
+
+    This seems like a reasonable improvement to get more accurate reports
+    from perf.
+
 0.8.1 | 2025-07-14 12:53:28 -0700
 
 0.8.0-2 | 2025-07-14 12:53:18 -0700
