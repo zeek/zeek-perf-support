@@ -14,6 +14,7 @@
 #include <zeek/TraverseTypes.h>
 #include <zeek/util.h>
 #include <cstdlib>
+#include <exception>
 #include <memory>
 #include <set>
 
@@ -28,22 +29,18 @@ using namespace zeek::plugin::Zeek_PerfSupport;
 #define debug(...) PLUGIN_DBG_LOG(plugin, __VA_ARGS__)
 
 namespace zeek {
-class RethrownInterpreterException : public InterpreterException {
-public:
-    RethrownInterpreterException() = default;
-};
 
 class SuspendedException {
 public:
     SuspendedException() = default;
-    void Store(const InterpreterException& e) { has_exception = true; }
-    void Throw() const {
-        if ( has_exception )
-            throw RethrownInterpreterException();
+    void Store(std::exception_ptr eptr) { caught = eptr; }
+    void ThrowIfCaught() const {
+        if ( caught )
+            std::rethrow_exception(caught);
     }
 
 private:
-    bool has_exception = false;
+    std::exception_ptr caught;
 };
 } // namespace zeek
 
@@ -65,7 +62,7 @@ zeek::Val* _Zeek_PerfSupport_stmt_exec(zeek::detail::Stmt* stmt, zeek::detail::F
     try {
         return stmt->Exec(frame, *flow).release();
     } catch ( const zeek::InterpreterException& e ) {
-        exc->Store(e);
+        exc->Store(std::current_exception());
         return nullptr;
     }
 }
@@ -127,7 +124,8 @@ public:
         zeek::IntrusivePtr ptr = {zeek::AdoptRef{},
                                   trampoline(orig_stmt.get(), frame, &flow, &exc, _Zeek_PerfSupport_stmt_exec)};
         if ( ! ptr )
-            exc.Throw();
+            exc.ThrowIfCaught();
+
         return ptr;
     }
 

@@ -1,3 +1,25 @@
+0.10.0 | 2026-02-27 16:56:13 +0100
+
+  * Use std::current_exception() and std::rethrow_exception() (Arne Welzel, Corelight)
+
+    ...and add a test case for ZAM when.
+
+    Long story: @Mohan-Dhawan was using an older version of this plugin that
+    didn't yet have the try-catch logic added for 0.9.0 and observed an
+    unexpected ZAMDelayedCallException being thrown in his deployment.
+
+    After adding a test case, not being able to reproduce, a small rabbit
+    hole of different RTTI information being used in the plugin vs Zeek
+    main, we finally figured out that he was actually using version 0.8.1
+    that didn't have any of the try-catch logic.
+
+    Anyhow, during the investigation, the std::current_exception() and
+    std::rethrow_exception() functions came up and they seem the better
+    fit rather than rethrowing a custom subclass of InterpreterException.
+    For some reason, the ZAMDelayedCallException isn't ever caught anywhere
+    in Zeek, but if it were, the RethrownInterpreterException used in this
+    plugin would have subtly broken something. So better safe than sorry.
+
 0.9.1 | 2025-08-08 16:06:10 +0200
 
   * GH-3: Trampoline: Add extra underscore on OSX (Arne Welzel, Corelight)
